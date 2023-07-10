@@ -52,6 +52,8 @@ c=1 #sentido (-1 o 1)
 
 def makelayerA(D,nl,theta): #con circulo perimetral
 
+
+
     xf=X0+(D/2)*math.cos(theta)
     yf=Y0+(D/2)*math.sin(theta)
     yi=yf
@@ -91,13 +93,60 @@ def makelayerA(D,nl,theta): #con circulo perimetral
             arc=abs((ang0i-ang0))*(D-2*dn)/2
             c=-c
 
-        if yf>yi:
+            if yf>yi:
 
-            gline(gcode,"G3 X"+str(xf)+" Y"+str(yf)+" R"+str((D-2*dn)/2)+" E"+str(arc*fp)+" F"+str(feedt))
+                gline(gcode,"G3 X"+str(xf)+" Y"+str(yf)+" R"+str((D-2*dn)/2)+" E"+str(arc*fp)+" F"+str(feedt))
 
-        else:
+            else:
+            
+                gline(gcode,"G2 X"+str(xf)+" Y"+str(yf)+" R"+str((D-2*dn)/2)+" E"+str(arc*fp)+" F"+str(feedt))
+
+def makelayerB(D,nl,theta): #sin circulo perimetral
+
+    xf=X0+(D/2)*math.cos(theta)
+    yf=Y0+(D/2)*math.sin(theta)
+    yi=yf
+    c=1
+
+    r=D/2
+
+    gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" F"+str(feedt)) #punto inicial
+
+    xf=X0+r*math.cos(theta)
+    yf=Y0+r*math.sin(theta)
+
+    r=r-2*dn
+    l=2*math.sqrt(abs(pow((D)/2,2)-pow(r,2))) #largo de linea (Lft-2*n diametro de infill dentro de círculo perimetral)
+    ang0=math.atan2(l/2,r)
+    yf=Y0+((D)/2)*math.sin(theta+ang0)
+    xf=X0+((D)/2)*math.cos(theta+ang0)
+    gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" F"+str(feedt))
+
+    for i in range(nl): #extrusion de linea y mover a inicio de nueva linea
         
-            gline(gcode,"G2 X"+str(xf)+" Y"+str(yf)+" R"+str((D-2*dn)/2)+" E"+str(arc*fp)+" F"+str(feedt))
+        yf=Y0+((D)/2)*math.sin(theta-ang0*c)
+        xf=X0+((D)/2)*math.cos(theta-ang0*c)
+        ang0i=ang0
+
+        gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" E"+str(l*fp)+" F"+str(feedp))
+
+        if i<nl-1: #espaciado entre lineas
+
+            r=r-dn-e
+            l=2*math.sqrt(abs(pow((D)/2,2)-pow(r,2)))
+            ang0=math.atan2(l/2,r)
+            xf=(D)/2*math.cos(theta-c*ang0)+X0
+            yf=(D)/2*math.sin(theta-c*ang0)+Y0
+            arc=abs((ang0i-ang0))*(D)/2
+            c=-c
+
+            if yf>yi:
+
+                gline(gcode,"G3 X"+str(xf)+" Y"+str(yf)+" R"+str((D)/2)+" E"+str(arc*fp)+" F"+str(feedt))
+
+            else:
+            
+                gline(gcode,"G2 X"+str(xf)+" Y"+str(yf)+" R"+str((D)/2)+" E"+str(arc*fp)+" F"+str(feedt))
 
 with open('scaffold_disc.gcode', 'w') as gcode:
 
@@ -114,78 +163,32 @@ with open('scaffold_disc.gcode', 'w') as gcode:
     gline(gcode,"G1 Z"+str(zf))
     gline(gcode,"G1 X" +str(X0-Lft)+" Y"+str(Y0)+" F3000")
     gline(gcode, "G2 X" +str(X0-Lft)+" Y"+str(Y0)+" I"+str(Lft)+ " J"+str(0)+ " E"+str(math.pi*Lft*2*fp)+ " F"+str(feedp)) #skirt
-    gline(gcode,"G1 "+str(X0)+" "+str(Y0))
 
-    makelayerA(Lft,lnt,math.pi*0)
+#tapas
 
-    zf=zf+lh
-    gline(gcode,"G1 Z"+str(zf)) #siguiente capa
+    for i in range(Nt):
 
-    makelayerA(Lft,lnt,math.pi/3)
-
-    zf=zf+lh
-    gline(gcode,"G1 Z"+str(zf)) #siguiente capa
-
-    makelayerA(Lft,lnt,2*math.pi/3)
-
-    #tapa
-
-    #scaffold
-
-    """ for j in range(N):
-
-        for i in range(lf): #extrusion de linea y mover a inicio de nueva linea
-
-            if j%2==1:
-
-                 l=2*math.sqrt(abs(pow(Lff/2,2)-pow(Y0-yf,2)))*c
-                 xf=xf+l
-                
-            else:
-
-                 l=2*math.sqrt(abs(pow(Lff/2,2)-pow(X0-xf,2)))*c
-                 yf=yf+l
-
-            c=-c
-
-            gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" E"+str(abs(l)*fp)+" F"+str(feedp))
-
-            if i<lf-1: #espaciado entre lineas
-
-                if(j%2==0):
-
-                    xfi=xf
-                    xf=xf+(e+dn)*d
-                    yf=yf-(math.sqrt(abs(pow(Lff/2,2)-pow(xf-X0,2)))*c-math.sqrt(abs(pow(Lff/2,2)-pow(xfi-X0,2)))*c)
-
-                else:
-                    
-                    yfi=yf
-                    yf=yf+(e+dn)*d
-                    xf=xf-(math.sqrt(abs(pow(Lff/2,2)-pow(yf-Y0,2)))*c-math.sqrt(abs(pow(Lff/2,2)-pow(yfi-Y0,2)))*c)
-
-                gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" F"+str(feedt))
-
-        zf=zf+lh
-
-        gline(gcode,"G1 Z"+str(zf)) #siguiente capa
-
-
-        if j%2==0:
-
-            d=-1
-            yf=Y0+Lff/2
-            xf=X0
-            gline(gcode,"G1 Y"+str(yf)+" F"+str(feedt))
-            gline(gcode,"G1 X"+str(xf)+" F"+str(feedt))
+        if(i%2==0):
+            makelayerA(Lft,lnt,math.pi*(i%3)*(1/3))
 
         else:
+            makelayerB(Lft,lnt,math.pi*(i%3)*(1/3))
 
-            d=1
-            xf=X0-Lff/2
-            yf=Y0
-            gline(gcode,"G1 X"+str(xf)+" F"+str(feedt))
-            gline(gcode,"G1 Y"+str(yf)+" F"+str(feedt)) """
+        zf=zf+lh
+        gline(gcode,"G1 Z"+str(zf)) #siguiente capa
+        
+#cilindro
+
+    for i in range(N):
+
+        if(i%2==0):
+            makelayerA(Lf,ln,math.pi*(i%3)*(1/3))
+
+        else:
+            makelayerB(Lf,ln,math.pi*(i%3)*(1/3))
+
+        zf=zf+lh
+        gline(gcode,"G1 Z"+str(zf)) #siguiente capa    
     
     gline(gcode,"G1 Z"+str(zf+20))
     gline(gcode,"M18 X Y")
@@ -194,6 +197,3 @@ with open('scaffold_disc.gcode', 'w') as gcode:
 
 gcode.close()
 
-def makelayerB(x0,y0):
-
-    print("hola")
