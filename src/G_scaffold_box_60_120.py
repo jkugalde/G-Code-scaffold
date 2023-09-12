@@ -12,10 +12,10 @@ def gline(writer,line):
 
 #parametros de diseno
 
-A = 20  #longitud en x
-B = 10 #longitud en y
+A = 40  #longitud en x
+B = 30 #longitud en y
 lh = 0.3 #altura de capa en mm
-N = 10 #numero de capas 
+N = 4 #numero de capas 
 e = 0.4 #espacio entre lineas en mm
 dn =  0.4 #diametro de boquilla en mm
 
@@ -50,25 +50,33 @@ def makelayer(a,b,theta): #con perimetro
 
     xf = X0-a/2
     yf = Y0+b/2
-    L=a
 
+    gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" F"+str(feedt))
     gline(gcode,"G1 X"+str(xf)+" Y"+str(yf-b)+" E"+str(b*fp)+" F"+str(feedp))
-    gline(gcode,"G1 X"+str(xf+a)+" Y"+str(yf)+" E"+str(a*fp)+" F"+str(feedp)) 
-    gline(gcode,"G1 X"+str(xf)+" Y"+str(yf+b)+" E"+str(b*fp)+" F"+str(feedp)) 
-    gline(gcode,"G1 X"+str(xf-a)+" Y"+str(yf)+" E"+str(a*fp)+" F"+str(feedp)) 
+    gline(gcode,"G1 X"+str(xf+a)+" Y"+str(yf-b)+" E"+str(a*fp)+" F"+str(feedp)) 
+    gline(gcode,"G1 X"+str(xf+a)+" Y"+str(yf)+" E"+str(b*fp)+" F"+str(feedp)) 
+    gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" E"+str(a*fp)+" F"+str(feedp)) 
 
     #punto inicial
 
     a=a-2*dn
     b=b-2*dn
 
-    xf=X0-a/2
-    yf=Y0+b/2
+    if theta>math.pi:
+        theta=theta-math.pi
 
-    print(xf)
-    print(yf)
+    if theta>math.pi/2 and (theta<math.pi):
+        xf=X0+a/2-e
+        c=-1
+    else:
+        xf=X0-a/2+e
+        c=1
+
+    yf = Y0+b/2
 
     gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" F"+str(feedt)) #mover a punto inicial del patron  
+
+    currpos=[xf,yf]
 
     while(True):
 
@@ -76,7 +84,7 @@ def makelayer(a,b,theta): #con perimetro
 
         #línea del patrón
 
-        m1=math.tan(theta+math.pi/2)
+        m1=math.tan(theta)
         a1=-m1
         b1=1
         c1=m1*xf-yf
@@ -120,7 +128,6 @@ def makelayer(a,b,theta): #con perimetro
 
         point = numpy.empty((2,2))
 
-        print(inter)
         v=0
 
         for i in range(4):
@@ -134,12 +141,23 @@ def makelayer(a,b,theta): #con perimetro
                     break        
 
         if(v==0):
-            break
+           break
 
-        L=math.sqrt(math.pow(point[0,0]-point[0,1],2)+math.pow(point[1,0]-point[1,1],2))
-        ##gline(gcode,"G1 X"+str(point[1,0])+" Y"+str(point[1,1])+" E"+str(L*fp)+" F"+str(feedp))
-        xf=xf+e
-        ##gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" E"+str(L*fp)+" F"+str(feedt))
+        L=math.sqrt(math.pow(point[0,1]-point[0,0],2)+math.pow(point[1,1]-point[1,0],2))
+        dis0 = math.sqrt(math.pow(point[0,0]-currpos[0],2)+math.pow(point[1,0]-currpos[1],2))
+        dis1 = math.sqrt(math.pow(point[0,1]-currpos[0],2)+math.pow(point[1,1]-currpos[1],2))
+        if(dis0<dis1):
+            gline(gcode,"G1 X"+str(point[0,0])+" Y"+str(point[1,0])+" F"+str(feedt))
+            gline(gcode,"G1 X"+str(point[0,1])+" Y"+str(point[1,1])+" E"+str(L*fp)+" F"+str(feedp))
+            currpos[0]=point[0,1]
+            currpos[1]=point[1,1]
+        else:
+            gline(gcode,"G1 X"+str(point[0,1])+" Y"+str(point[1,1])+" F"+str(feedt))
+            gline(gcode,"G1 X"+str(point[0,0])+" Y"+str(point[1,0])+" E"+str(L*fp)+" F"+str(feedp))
+            currpos[0]=point[0,0]
+            currpos[1]=point[1,0]
+
+        xf=xf+c*(e+dn)/abs(math.sin(theta))
   
 
 with open('scaffold_box.gcode','w') as gcode:
@@ -152,25 +170,25 @@ with open('scaffold_box.gcode','w') as gcode:
     #skirt
 
     skrt_dis = 20 #skirt distance
-    xf=X0-A-skrt_dis
-    yf=Y0+B+skrt_dis
+    xf=X0-A/2-skrt_dis
+    yf=Y0+B/2+skrt_dis
     c=1
-
+    
+    gline(gcode,"G1 Z"+str(zf)) #altura inicial
     gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" F"+str(feedt)) #mover a punto inicial de skirt
 
     #skirt
 
-    gline(gcode,"G1 X"+str(xf)+" Y"+str(yf-B-skrt_dis)+" E"+str((A+skrt_dis)*fp)+" F"+str(feedp))
-    gline(gcode,"G1 X"+str(xf+A+skrt_dis)+" Y"+str(yf)+" E"+str((A+skrt_dis)*fp)+" F"+str(feedp)) 
-    gline(gcode,"G1 X"+str(xf)+" Y"+str(yf+B+skrt_dis)+" E"+str((A+skrt_dis)*fp)+" F"+str(feedp)) 
-    gline(gcode,"G1 X"+str(xf-A-skrt_dis)+" Y"+str(yf)+" E"+str((A+skrt_dis)*fp)+" F"+str(feedp))
-    gline(gcode,"G1 X"+str(xf+skrt_dis)+" Y"+str(yf-skrt_dis)+" F"+str(feedt))
+    gline(gcode,"G1 X"+str(xf)+" Y"+str(yf-B-2*skrt_dis)+" E"+str((B+2*skrt_dis)*fp)+" F"+str(feedp))
+    gline(gcode,"G1 X"+str(xf+A+2*skrt_dis)+" Y"+str(yf-B-2*skrt_dis)+" E"+str((A+2*skrt_dis)*fp)+" F"+str(feedp)) 
+    gline(gcode,"G1 X"+str(xf+A+2*skrt_dis)+" Y"+str(yf)+" E"+str((B+2*skrt_dis)*fp)+" F"+str(feedp)) 
+    gline(gcode,"G1 X"+str(xf)+" Y"+str(yf)+" E"+str((A+2*skrt_dis)*fp)+" F"+str(feedp))
         
 #estructura
 
-    for i in range(1):
+    for i in range(N):
 
-        makelayer(A,B,math.pi*(i%3)*(1/3))
+        makelayer(A,B,math.pi*(i%3)*(1/3)+math.pi/2)
         zf=zf+lh
         gline(gcode,"G1 Z"+str(zf)) #siguiente capa    
     
